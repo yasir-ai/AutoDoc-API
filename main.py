@@ -53,14 +53,13 @@ async def modify_docx(file: UploadFile = File(...), edits: str = Form(...)):
     # Save output
     doc.save(output_path)
 
-    # ✅ Log + check file existence
-    if os.path.exists(output_path):
-        print(f"[✅] Returning modified file from {output_path}")
-        return FileResponse(
-            output_path,
-            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            filename="Modified_Territory_Plan.docx"
-        )
-    else:
-        print(f"[❌] File not found at {output_path}")
-        return JSONResponse(content={"error": "File not found after saving"}, status_code=500)
+# Upload to file.io
+with open(output_path, 'rb') as f:
+    response = requests.post('https://file.io', files={'file': f})
+
+# Return hosted link
+if response.status_code == 200 and response.json().get("success"):
+    download_url = response.json().get("link")
+    return {"downloadUrl": download_url}
+else:
+    return {"error": "File upload failed", "details": response.text}

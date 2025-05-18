@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from docx import Document
 from docx.shared import RGBColor
 import json
+import requests
 import os
 
 app = FastAPI()
@@ -15,16 +16,14 @@ async def modify_docx(file: UploadFile = File(...), edits: str = Form(...)):
     except json.JSONDecodeError:
         return JSONResponse(content={"error": "Invalid JSON in 'edits'"}, status_code=400)
 
-    # Set paths in a known writable directory (safe for Render/Railway)
-    temp_dir = "/tmp"
-    input_path = os.path.join(temp_dir, "uploaded.docx")
-    output_path = os.path.join(temp_dir, "modified_output.docx")
+    # Save uploaded file to /tmp
+    input_path = "/tmp/uploaded.docx"
+    output_path = "/tmp/modified_output.docx"
 
-    # Save uploaded file
     with open(input_path, "wb") as buffer:
         buffer.write(await file.read())
 
-    # Modify the document
+    # Load and modify document
     doc = Document(input_path)
 
     replacements = edits.get("replacements", {})
@@ -37,12 +36,12 @@ async def modify_docx(file: UploadFile = File(...), edits: str = Form(...)):
             if key in para.text:
                 para.text = para.text.replace(key, val)
 
-    # Highlight specified sections
+    # Highlight sections
     for para in doc.paragraphs:
         if any(section in para.text for section in highlight_sections):
             run = para.add_run("  ← [highlighted section]")
             run.bold = True
-            run.font.color.rgb = RGBColor(0, 0, 255)  # blue
+            run.font.color.rgb = RGBColor(0, 0, 255)  # Blue
 
     # Add inline notes
     for para in doc.paragraphs:
@@ -53,13 +52,12 @@ async def modify_docx(file: UploadFile = File(...), edits: str = Form(...)):
     # Save output
     doc.save(output_path)
 
-# Upload to file.io
-with open(output_path, 'rb') as f:
-    response = requests.post('https://file.io', files={'file': f})
+    # Upload to file.io
+    with open(output_path, "rb") as f:
+        response = requests.post("https://file.io", files={"file": f})
 
-# Return hosted link
-if response.status_code == 200 and response.json().get("success"):
-    download_url = response.json().get("link")
-    return {"downloadUrl": download_url}
-else:
-    return {"error": "File upload failed", "details": response.text}
+    if response.status_code == 200 and response.json().get("success"):
+        download_url = response.json().get("link")
+        return {"downloadUrl": download_url}
+    else:
+        return JSONResponse(content={"error": "File upload failed", "details": response.text}, status_code=500)

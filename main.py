@@ -6,6 +6,7 @@ from tempfile import NamedTemporaryFile
 import shutil
 import uvicorn
 import json
+from docx.shared import RGBColor
 
 app = FastAPI()
 

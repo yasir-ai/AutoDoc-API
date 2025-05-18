@@ -6,6 +6,7 @@ from tempfile import NamedTemporaryFile
 import shutil
 import uvicorn
 import json
+import os
 from docx.shared import RGBColor
 
 app = FastAPI()
@@ -25,6 +26,7 @@ async def modify_docx(
         shutil.copyfileobj(file.file, temp)
         temp_path = temp.name
 
+    # Load and modify document
     doc = Document(temp_path)
 
     # Apply replacements
@@ -38,7 +40,7 @@ async def modify_docx(
         if any(section in para.text for section in highlight_sections):
             run = para.add_run("  ← [highlighted section]")
             run.bold = True
-            run.font.color.rgb = RGBColor(0, 0, 255)  # blue highlight
+            run.font.color.rgb = RGBColor(0, 0, 255)  # blue
 
     # Add inline notes
     for para in doc.paragraphs:
@@ -46,8 +48,16 @@ async def modify_docx(
             if trigger in para.text:
                 para.text += f"  *{note}*"
 
-    # Save modified doc
+    # Save final output file (same directory)
     output_path = temp_path.replace(".docx", "_modified.docx")
     doc.save(output_path)
 
-    return FileResponse(output_path, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", filename="Modified_Territory_Plan.docx")
+    # ✅ Make sure the file exists and return it
+    if os.path.exists(output_path):
+        return FileResponse(
+            path=output_path,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            filename="Modified_Territory_Plan.docx"
+        )
+    else:
+        return {"error": "Modified file could not be found or saved properly"}

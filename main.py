@@ -1,0 +1,52 @@
+# filename: main.py
+from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.responses import FileResponse
+from docx import Document
+from tempfile import NamedTemporaryFile
+import shutil
+import uvicorn
+import json
+
+app = FastAPI()
+
+@app.post("/modify-docx")
+async def modify_docx(
+    file: UploadFile = File(...),
+    edits: str = Form(...)  # expects a JSON string
+):
+    edits = json.loads(edits)
+    replacements = edits.get("replacements", {})
+    highlight_sections = edits.get("highlightSections", [])
+    inline_notes = edits.get("inlineNotes", {})
+
+    # Save uploaded docx to temp file
+    with NamedTemporaryFile(delete=False, suffix=".docx") as temp:
+        shutil.copyfileobj(file.file, temp)
+        temp_path = temp.name
+
+    doc = Document(temp_path)
+
+    # Apply replacements
+    for para in doc.paragraphs:
+        for key, val in replacements.items():
+            if key in para.text:
+                para.text = para.text.replace(key, val)
+
+    # Highlight specified sections
+    for para in doc.paragraphs:
+        if any(section in para.text for section in highlight_sections):
+            run = para.add_run("  ← [highlighted section]")
+            run.bold = True
+            run.font.color.rgb = RGBColor(0, 0, 255)  # blue highlight
+
+    # Add inline notes
+    for para in doc.paragraphs:
+        for trigger, note in inline_notes.items():
+            if trigger in para.text:
+                para.text += f"  *{note}*"
+
+    # Save modified doc
+    output_path = temp_path.replace(".docx", "_modified.docx")
+    doc.save(output_path)
+
+    return FileResponse(output_path, media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", filename="Modified_Territory_Plan.docx")

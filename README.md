@@ -22,7 +22,7 @@ Allows any Custom GPT to call it and process documents at scale to:
 ## 📦 Quickstart
 
 #### 1-Click Deploy (Cloud)
-[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yasir-ai/fastapi-docx-editor)
+[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yasir-ai/autodoc-api)
 
 #### Local Deployment
 
